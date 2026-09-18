@@ -1,4 +1,5 @@
 import logging
+import certifi
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from app.config import settings
 
@@ -11,10 +12,38 @@ class Database:
 db_instance = Database()
 
 async def connect_to_mongo():
-    logger.info(f"Connecting to MongoDB at {settings.MONGODB_URI}...")
-    db_instance.client = AsyncIOMotorClient(settings.MONGODB_URI)
+    masked_uri = settings.MONGODB_URI
+    if "@" in masked_uri:
+        prefix, rest = masked_uri.split("@", 1)
+        if "://" in prefix:
+            proto = prefix.split("://")[0]
+            masked_uri = f"{proto}://*****:*****@{rest}"
+
+    logger.info(f"Connecting to MongoDB at {masked_uri}...")
+    
+    client_kwargs = {
+        "serverSelectionTimeoutMS": 10000,
+    }
+    
+    # Use certifi CA certificates for robust TLS on Atlas / cloud deployments
+    if "mongodb+srv" in settings.MONGODB_URI or "tls=true" in settings.MONGODB_URI.lower() or "ssl=true" in settings.MONGODB_URI.lower():
+        try:
+            client_kwargs["tlsCAFile"] = certifi.where()
+        except Exception as e:
+            logger.warning(f"Could not load certifi CA bundle: {e}")
+
+    db_instance.client = AsyncIOMotorClient(settings.MONGODB_URI, **client_kwargs)
     db_instance.db = db_instance.client[settings.DATABASE_NAME]
-    logger.info(f"Connected to database: {settings.DATABASE_NAME}")
+
+    # Explicitly test connection on startup so connection issues are clearly logged
+    try:
+        await db_instance.client.admin.command('ping')
+        logger.info(f"Connected to database successfully: {settings.DATABASE_NAME}")
+    except Exception as e:
+        logger.error(
+            f"Failed to connect to MongoDB: {e}. "
+            f"If deployed on Render/Cloud, make sure 0.0.0.0/0 is added to MongoDB Atlas Network Access IP Access List!"
+        )
     
     # Initialize indexes
     await init_db_indexes()
