@@ -1,0 +1,218 @@
+@import 'leaflet/dist/leaflet.css';
+@import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet Custom Marker & Popup Styles */
+.leaflet-custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2), 0 8px 10px -6px rgba(15, 23, 42, 0.15) !important;
+  padding: 4px !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-content {
+  margin: 6px 8px !important;
+  line-height: normal !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-close-button {
+  top: 8px !important;
+  right: 8px !important;
+  color: #64748b !important;
+  font-size: 16px !important;
+  padding: 2px !important;
+  border-radius: 6px !important;
+}
+.custom-leaflet-popup .leaflet-popup-close-button:hover {
+  color: #0f172a !important;
+  background: #f1f5f9 !important;
+}
+
+@layer base {
+  html, body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-600 selection:text-white;
+  }
+}
+
+/* Custom Scrollbar Utilities */
+.custom-scrollbar::-webkit-scrollbar {
+  display: block !important;
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+/* Utility to explicitly hide scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes loadingBar {
+  0% {
+    width: 0%;
+    transform: translateX(-100%);
+  }
+  50% {
+    width: 70%;
+    transform: translateX(20%);
+  }
+  100% {
+    width: 100%;
+    transform: translateX(100%);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-loading-bar {
+  animation: loadingBar 1.5s infinite ease-in-out;
+}
+
+/* Print CSS */
+@media print {
+  /* Hide navigation chrome, headers, sidebars, and interactive controls */
+  nav, header, aside, footer, button, select, input, form, .print\:hidden {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 9pt !important;
+  }
+
+  #printable-report {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  #printable-report * {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #printable-report table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+  }
+
+  #printable-report th, 
+  #printable-report td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 4px 5px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    vertical-align: top !important;
+    line-height: 1.25 !important;
+  }
+
+  #printable-report th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-size: 8pt !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+  }
+
+  /* Specific Print Column Width Allocations (Total = 100%) */
+  #printable-report th:nth-child(1), #printable-report td:nth-child(1) { width: 18% !important; }
+  #printable-report th:nth-child(2), #printable-report td:nth-child(2) { width: 28% !important; }
+  #printable-report th:nth-child(3), #printable-report td:nth-child(3) { width: 15% !important; }
+  #printable-report th:nth-child(4), #printable-report td:nth-child(4) { width: 13% !important; }
+  #printable-report th:nth-child(5), #printable-report td:nth-child(5) { width: 14% !important; }
+  #printable-report th:nth-child(6), #printable-report td:nth-child(6) { width: 12% !important; }
+
+  /* Legacy receipt print support */
+  #printable-receipt {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  #printable-receipt * {
+    visibility: visible !important;
+  }
+
+  @page {
+    margin: 8mm;
+    size: A4 portrait;
+  }
+}

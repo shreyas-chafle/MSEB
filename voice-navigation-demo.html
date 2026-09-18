@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leaflet Free Voice Navigation & TTS Meter Tour</title>
+
+  <!-- 1. Leaflet Core CSS & JS (100% Free OpenStreetMap) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- 2. Leaflet Routing Machine Plugin CSS & JS (Free OSRM backend) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Top Navigation Status Card */
+    .nav-header {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      max-width: 480px;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+      border-radius: 16px;
+      padding: 14px 18px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    }
+
+    .nav-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .instruction-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: #38bdf8;
+      line-height: 1.3;
+      margin-bottom: 6px;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+    }
+
+    .nav-metrics {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      color: #94a3b8;
+      border-top: 1px solid rgba(51, 65, 85, 0.6);
+      padding-top: 8px;
+    }
+
+    .metric-item strong {
+      color: #f1f5f9;
+      font-size: 13px;
+    }
+
+    /* Voice Activation Floating Bar */
+    .controls-bar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      padding: 8px 12px;
+      border-radius: 9999px;
+      border: 1px solid #334155;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      border-radius: 9999px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-voice {
+      background: #0284c7;
+      color: #ffffff;
+    }
+    .btn-voice:hover {
+      background: #0369a1;
+    }
+    .btn-voice.active {
+      background: #10b981;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+    }
+
+    .btn-stop {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    .btn-stop:hover {
+      background: #475569;
+      color: #ffffff;
+    }
+
+    /* Custom Leaflet Popup Styling */
+    .leaflet-popup-content-wrapper {
+      background: #1e293b !important;
+      color: #f8fafc !important;
+      border-radius: 12px !important;
+      padding: 4px !important;
+      border: 1px solid #475569 !important;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+    }
+    .leaflet-popup-tip {
+      background: #1e293b !important;
+    }
+    .leaflet-popup-content {
+      margin: 8px 12px !important;
+      font-size: 13px !important;
+      line-height: 1.4 !important;
+    }
+    .popup-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #38bdf8;
+      margin-bottom: 4px;
+    }
+    .popup-field {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 2px;
+    }
+    .popup-field strong {
+      color: #e2e8f0;
+    }
+    .popup-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 6px 10px;
+      background: #059669;
+      color: #ffffff;
+      font-weight: 700;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .popup-btn:hover {
+      background: #047857;
+    }
+
+    /* Hide default ugly white routing container box */
+    .leaflet-routing-container {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Map element -->
+  <div id="map"></div>
+
+  <!-- Turn-by-Turn Instruction Header Card -->
+  <div class="nav-header" id="nav-header">
+    <div class="nav-title-row">
+      <span class="badge" id="nav-badge">Voice Navigation</span>
+      <span id="voice-indicator" style="font-size: 11px; color: #10b981; font-weight: bold;">● TTS Ready</span>
+    </div>
+    <div class="instruction-text" id="instruction-display">
+      Click a customer meter marker or "Start Navigation" to begin.
+    </div>
+    <div class="nav-metrics">
+      <div class="metric-item">Distance: <strong id="dist-display">--</strong></div>
+      <div class="metric-item">Est. Time: <strong id="time-display">--</strong></div>
+      <div class="metric-item">Consumer: <strong id="target-display">None</strong></div>
+    </div>
+  </div>
+
+  <!-- Bottom Interactive Buttons to bypass browser autoplay restrictions -->
+  <div class="controls-bar">
+    <button id="btn-enable-voice" class="btn btn-voice">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+      <span>Enable Voice TTS</span>
+    </button>
+    <button id="btn-start-nav" class="btn btn-voice" style="background: #2563eb;">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+      <span>Start Route Demo</span>
+    </button>
+    <button id="btn-stop-nav" class="btn btn-stop">
+      <span>Stop / Mute</span>
+    </button>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. SCALABLE WEB SPEECH API & WEB AUDIO ENGINE (100% Native & Free)
+       ========================================================================== */
+    let lastSpokenText = '';
+    let isVoiceUnlocked = false;
+    let isMuted = false;
+    const activeUtterances = new Set();
+
+    /**
+     * Instant audio chime using Web Audio API so the user immediately hears sound
+     */
+    function playNavigationTone(type = 'beep') {
+      if (isMuted) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'beep') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+        } else if (type === 'success') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+          osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.25, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.3);
+        }
+      } catch (e) {
+        console.warn('AudioContext error:', e);
+      }
+    }
+
+    /**
+     * Initializes & unlocks the Web Speech API on user gesture (click/touch).
+     * Required by modern browsers (Chrome, Edge, Brave, Safari) to bypass autoplay blocks.
+     */
+    function enableVoiceAudio(speakConfirmation = false) {
+      if (!('speechSynthesis' in window)) {
+        console.warn('Web Speech API is not supported in this browser.');
+        return false;
+      }
+      try {
+        playNavigationTone('success');
+        window.speechSynthesis.resume();
+        const silent = new SpeechSynthesisUtterance('');
+        silent.volume = 0;
+        window.speechSynthesis.speak(silent);
+        isVoiceUnlocked = true;
+        isMuted = false;
+
+        const btn = document.getElementById('btn-enable-voice');
+        if (btn) {
+          btn.classList.add('active');
+          btn.innerHTML = `
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            <span>Voice TTS Active</span>
+          `;
+        }
+        document.getElementById('voice-indicator').textContent = '● Voice & Sound Active';
+        document.getElementById('voice-indicator').style.color = '#10b981';
+
+        if (speakConfirmation) {
+          setTimeout(() => {
+            speakText('Voice navigation enabled. Sound is working properly.', true);
+          }, 100);
+        }
+        return true;
+      } catch (e) {
+        console.warn('Audio unlock error:', e);
+        return false;
+      }
+    }
+
+    /**
+     * Core Text-to-Speech Speaker Function.
+     * Manages audio queue to prevent overlapping voices using speechSynthesis.cancel().
+     *
+     * @param {string} text - Message to read aloud
+     * @param {boolean} urgent - If true, immediately interrupts current speech
+     */
+    function speakText(text, urgent = true) {
+      if (!('speechSynthesis' in window) || isMuted) return;
+
+      const cleanText = text.trim();
+      if (!cleanText) return;
+
+      // Avoid repeating the exact same utterance consecutively if still speaking
+      if (cleanText === lastSpokenText && window.speechSynthesis.speaking) {
+        return;
+      }
+
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+
+        // Strict Execution Rule 3: Cancel currently speaking audio before speaking new urgent instruction
+        if (urgent && window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          activeUtterances.clear();
+        }
+
+        lastSpokenText = cleanText;
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.rate = 0.95; // Natural driving navigation cadence
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0; // Max volume
+        utterance.lang = 'en-US';
+
+        // GC Protection
+        activeUtterances.add(utterance);
+        utterance.onend = () => activeUtterances.delete(utterance);
+        utterance.onerror = () => activeUtterances.delete(utterance);
+
+        const voices = window.speechSynthesis.getVoices();
+        if (voices && voices.length > 0) {
+          const naturalVoice = voices.find(v =>
+            v.lang.startsWith('en') && (
+              v.name.includes('Natural') ||
+              v.name.includes('Google') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Jenny')
+            )
+          ) || voices.find(v => v.lang.startsWith('en'));
+
+          if (naturalVoice) {
+            utterance.voice = naturalVoice;
+          }
+        }
+
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.warn('TTS Speak Error:', err);
+      }
+    }
+
+    /**
+     * Stop and clear speech queue.
+     */
+    function stopSpeech() {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        lastSpokenText = '';
+      }
+    }
+
+    /**
+     * Requirement: Read customer name and meter/customer information on marker click or route start.
+     */
+    function announceCustomerInfo(customer) {
+      const parts = [`Consumer: ${customer.name}`];
+      if (customer.meter_number) {
+        parts.push(`Meter number: ${customer.meter_number}`);
+      }
+      if (customer.pending_amount) {
+        parts.push(`Outstanding balance: ${customer.pending_amount} Rupees`);
+      }
+      const announcement = parts.join('. ');
+      speakText(announcement, true);
+    }
+
+    /**
+     * Requirement: Translate OSRM maneuvers into standardized natural spoken navigation instructions:
+     * - "Turn left" / "Turn right"
+     * - "Continue straight"
+     * - "You have reached the destination"
+     * - Distance warnings (e.g. "Turn right in 100 meters" / "In 100 meters, turn right")
+     */
+    function parseManeuverSpeech(type = '', modifier = '', roadName = '', distanceMeters = 0) {
+      const mod = (modifier || '').toLowerCase();
+      const typ = (type || '').toLowerCase();
+      const road = roadName && roadName !== 'road' && roadName !== '' ? ` onto ${roadName}` : '';
+
+      if (typ === 'arrive' || typ === 'destination') {
+        return 'You have reached the destination electricity meter.';
+      }
+
+      let action = '';
+      if (mod.includes('left')) {
+        action = `Turn left${road}`;
+      } else if (mod.includes('right')) {
+        action = `Turn right${road}`;
+      } else if (mod.includes('straight') || typ.includes('continue')) {
+        action = `Continue straight${road}`;
+      } else if (mod.includes('u-turn')) {
+        action = 'Make a U-turn';
+      } else if (typ === 'depart') {
+        action = road ? `Head out${road}` : 'Start heading out';
+      } else {
+        action = `Continue straight${road}`;
+      }
+
+      // Distance warnings
+      if (distanceMeters && distanceMeters > 0) {
+        if (distanceMeters >= 1000) {
+          const km = (distanceMeters / 1000).toFixed(1);
+          return `In ${km} kilometers, ${action.toLowerCase()}`;
+        } else if (distanceMeters >= 40) {
+          const rounded = Math.round(distanceMeters / 10) * 10;
+          return `In ${rounded} meters, ${action.toLowerCase()}`;
+        }
+      }
+
+      return action;
+    }
+
+    /* ==========================================================================
+       2. LEAFLET MAP & OSRM ROUTING MACHINE INITIALIZATION
+       ========================================================================== */
+    // Field Officer GPS Start Point (e.g. Nagpur / Maharashtra Area)
+    const officerLocation = [21.1458, 79.0882];
+
+    // Customer / Electricity Meter Locations Dataset
+    const customerMeters = [
+      {
+        id: 'CUST-001',
+        name: 'Rameshwar Patil',
+        meter_number: 'LT-8493021',
+        pending_amount: 4350,
+        lat: 21.1520,
+        lng: 79.0820,
+        address: 'Plot 42, Civil Lines, Nagpur'
+      },
+      {
+        id: 'CUST-002',
+        name: 'Sunita Deshmukh',
+        meter_number: 'LT-5839201',
+        pending_amount: 1820,
+        lat: 21.1410,
+        lng: 79.0940,
+        address: 'B-12 Ramdaspeth, Nagpur'
+      },
+      {
+        id: 'CUST-003',
+        name: 'Ganesh Kulkarni',
+        meter_number: 'LT-9382104',
+        pending_amount: 7200,
+        lat: 21.1565,
+        lng: 79.0965,
+        address: 'Shop 5, Dharampeth Market, Nagpur'
+      }
+    ];
+
+    // Initialize Leaflet Map
+    const map = L.map('map', {
+      center: officerLocation,
+      zoom: 14,
+      zoomControl: true
+    });
+
+    // 100% Free OpenStreetMap Tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Add Field Officer Marker with custom icon
+    const officerIcon = L.divIcon({
+      className: 'officer-marker-pin',
+      html: `
+        <div style="background: #2563eb; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
+          <svg width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+        </div>
+      `,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
+    });
+
+    const officerMarker = L.marker(officerLocation, {
+      icon: officerIcon,
+      title: 'Field Officer (You)'
+    }).addTo(map).bindPopup('<strong>Field Officer Location</strong><br>GPS Active');
+
+    // Add Customer Meter Markers & Attach TTS Audio Events
+    const customerMarkers = {};
+
+    customerMeters.forEach(cust => {
+      const consumerIcon = L.divIcon({
+        className: 'meter-marker-pin',
+        html: `
+          <div style="background: #e11d48; width: 32px; height: 32px; border-radius: 50%; border: 3px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
+            <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      const marker = L.marker([cust.lat, cust.lng], { icon: consumerIcon }).addTo(map);
+
+      // Bind rich popup with customer information
+      const popupContent = `
+        <div class="popup-title">${cust.name}</div>
+        <div class="popup-field">Meter No: <strong>${cust.meter_number}</strong></div>
+        <div class="popup-field">Pending Bill: <strong style="color: #f59e0b;">₹${cust.pending_amount.toLocaleString()}</strong></div>
+        <div class="popup-field">Address: <strong>${cust.address}</strong></div>
+        <button class="popup-btn" onclick="startRouteToCustomer('${cust.id}')">
+          <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+          <span>Start Navigation Here</span>
+        </button>
+      `;
+      marker.bindPopup(popupContent);
+
+      // Audio Event 1: Marker Click triggers spoken customer & meter details
+      marker.on('click', () => {
+        enableVoiceAudio();
+        announceCustomerInfo(cust);
+      });
+
+      customerMarkers[cust.id] = marker;
+    });
+
+    /* ==========================================================================
+       3. LEAFLET ROUTING MACHINE (OSRM FREE BACKEND) & TURN-BY-TURN TTS
+       ========================================================================== */
+    let routingControl = null;
+    let activeCustomer = null;
+
+    function startRouteToCustomer(customerId) {
+      const cust = customerMeters.find(c => c.id === customerId);
+      if (!cust) return;
+
+      activeCustomer = cust;
+      enableVoiceAudio();
+
+      // Audio Event 2: Read customer name and meter info when route is started
+      speakText(`Starting navigation to consumer ${cust.name}. Meter number ${cust.meter_number}. Outstanding amount ${cust.pending_amount} rupees.`, true);
+
+      document.getElementById('target-display').textContent = cust.name;
+      document.getElementById('instruction-display').textContent = `Calculating route to ${cust.name}...`;
+
+      // Remove existing route if any
+      if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+      }
+
+      // Initialize Leaflet Routing Machine with official L.Routing.control
+      routingControl = L.Routing.control({
+        waypoints: [
+          L.latLng(officerLocation[0], officerLocation[1]),
+          L.latLng(cust.lat, cust.lng)
+        ],
+        router: L.Routing.osrmv1({
+          serviceUrl: 'https://router.project-osrm.org/route/v1',
+          profile: 'driving'
+        }),
+        lineOptions: {
+          styles: [{ color: '#0284c7', weight: 6, opacity: 0.9 }]
+        },
+        addWaypoints: false,
+        routeWhileDragging: false,
+        fitSelectedRoutes: true,
+        show: false // We use our custom UI
+      }).addTo(map);
+
+      // Hook into 'routesfound' event to read initial maneuver instructions
+      routingControl.on('routesfound', function(e) {
+        const routes = e.routes;
+        if (!routes || routes.length === 0) return;
+
+        const primaryRoute = routes[0];
+        const distKm = (primaryRoute.summary.totalDistance / 1000).toFixed(1);
+        const timeMin = Math.round(primaryRoute.summary.totalTime / 60);
+
+        document.getElementById('dist-display').textContent = `${distKm} km`;
+        document.getElementById('time-display').textContent = `${timeMin} min`;
+
+        const instructions = primaryRoute.instructions || [];
+        if (instructions.length > 0) {
+          const firstStep = instructions[0];
+          const spokenFirstManeuver = parseManeuverSpeech(
+            firstStep.type,
+            firstStep.modifier,
+            firstStep.road,
+            firstStep.distance
+          );
+
+          document.getElementById('instruction-display').textContent = firstStep.text || spokenFirstManeuver;
+
+          // Speak initial turn-by-turn instruction
+          speakText(`Route found. ${spokenFirstManeuver}`, false);
+
+          // Simulate live step advancement for demonstration
+          scheduleStepSimulation(instructions);
+        }
+      });
+    }
+
+    // Simulation timer to demonstrate turn-by-turn audio progression
+    let stepTimer = null;
+    function scheduleStepSimulation(instructions) {
+      if (stepTimer) clearTimeout(stepTimer);
+      let stepIdx = 1;
+
+      function nextStep() {
+        if (stepIdx < instructions.length) {
+          const step = instructions[stepIdx];
+          const text = parseManeuverSpeech(step.type, step.modifier, step.road, step.distance);
+          document.getElementById('instruction-display').textContent = step.text || text;
+
+          // Turn-by-Turn Maneuver Voice Announcement
+          speakText(text, true);
+
+          stepIdx++;
+          stepTimer = setTimeout(nextStep, 7000); // Progress to next step every 7s
+        } else {
+          // Final Destination Arrival
+          const arrivalSpeech = 'You have reached the destination electricity meter.';
+          document.getElementById('instruction-display').textContent = arrivalSpeech;
+          speakText(arrivalSpeech, true);
+        }
+      }
+
+      stepTimer = setTimeout(nextStep, 6000);
+    }
+
+    /* ==========================================================================
+       4. USER EVENT HANDLERS & BUTTON BINDINGS
+       ========================================================================== */
+    document.getElementById('btn-enable-voice').addEventListener('click', function() {
+      enableVoiceAudio();
+      speakText('Voice navigation is enabled and ready.', true);
+    });
+
+    document.getElementById('btn-start-nav').addEventListener('click', function() {
+      enableVoiceAudio();
+      startRouteToCustomer(customerMeters[0].id);
+    });
+
+    document.getElementById('btn-stop-nav').addEventListener('click', function() {
+      isMuted = !isMuted;
+      if (isMuted) {
+        stopSpeech();
+        if (stepTimer) clearTimeout(stepTimer);
+        this.textContent = 'Unmute Voice';
+        document.getElementById('voice-indicator').textContent = '✕ Muted';
+        document.getElementById('voice-indicator').style.color = '#ef4444';
+      } else {
+        this.textContent = 'Stop / Mute';
+        enableVoiceAudio();
+        speakText('Voice navigation resumed', true);
+      }
+    });
+
+    // Make global helper accessible for popup buttons
+    window.startRouteToCustomer = startRouteToCustomer;
+  </script>
+</body>
+</html>
