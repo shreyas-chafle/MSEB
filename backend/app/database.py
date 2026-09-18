@@ -31,6 +31,8 @@ async def connect_to_mongo():
             client_kwargs["tlsCAFile"] = certifi.where()
         except Exception as e:
             logger.warning(f"Could not load certifi CA bundle: {e}")
+        client_kwargs["tls"] = True
+        client_kwargs["tlsAllowInvalidCertificates"] = True
 
     db_instance.client = AsyncIOMotorClient(settings.MONGODB_URI, **client_kwargs)
     db_instance.db = db_instance.client[settings.DATABASE_NAME]
