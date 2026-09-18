@@ -1,5 +1,5 @@
-# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -29,7 +29,15 @@ app = FastAPI(
 # Custom Security & Anti-Caching Middleware
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
-    response: Response = await call_next(request)
+    try:
+        response: Response = await call_next(request)
+    except Exception as exc:
+        logger.error(f"Error in request pipeline {request.method} {request.url.path}: {exc}", exc_info=True)
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": f"Database or Server Error: {str(exc)}"}
+        )
+
     if request.method != "OPTIONS":
         # Only disable caching on API endpoints (not pages/static assets)
         if request.url.path.startswith("/api"):
@@ -42,16 +50,38 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
+# Explicit origins allowed to access the API with credentials
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "https://mseb-nu.vercel.app",
+]
+for origin in settings.cors_origins:
+    if origin != "*" and origin not in allowed_origins:
+        allowed_origins.append(origin)
+
 # Enable CORS for Next.js frontend (Supports Vercel, Render, Localhost, and custom domains)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000"],
-    allow_origin_regex=r"https?://.*",
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app|https?://localhost(:\d+)?|https?://127\.0\.0\.1(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled server error at {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Database or Server Error: {str(exc)}. Please verify MongoDB Atlas connection and server logs."
+        }
+    )
+
 
 # Register API Routers
 app.include_router(auth.router)
